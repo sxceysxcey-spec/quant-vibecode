@@ -1,0 +1,49 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>Wall Street Regime Wing</title>
+    <link rel="stylesheet" href="style.css" />
+    <script defer src="sector_heatmap.js"></script>
+    <script defer src="index.js"></script>
+</head>
+<body>
+    <div class="page-shell">
+        <header class="hero-bar">
+            <div>
+                <div class="hero-label">QUANT INFRA - C++ / WASM</div>
+                <h1>Sector Regime Heatmap</h1>
+                <p>Live visual risk matrix with execution ticket intelligence and crash-safe C++ engine fallback.</p>
+            </div>
+            <div class="hero-meta">
+                <span>VISUALS</span><span>DATA</span><span>TRADE READY</span>
+            </div>
+        </header>
+
+        <main class="content-grid">
+            <section class="panel panel-dark">
+                <div class="panel-head"><h2>Regime Heatmap</h2></div>
+                <div class="panel-body" id="heatmap-placeholder"></div>
+                <div class="panel-footer" id="heatmap-status">Initializing...</div>
+            </section>
+
+            <section class="panel panel-glow">
+                <div class="panel-head"><h2>Execution Ticket</h2></div>
+                <div class="panel-body" id="order-ticket-placeholder"></div>
+                <div class="panel-footer" id="order-ticket-status">Awaiting data...</div>
+            </section>
+
+            <section class="panel panel-dark wide-panel">
+                <div class="panel-head"><h2>Scorecard & Risk Metrics</h2></div>
+                <div class="panel-body" id="scorecard-placeholder"></div>
+            </section>
+        </main>
+
+        <footer class="footer-bar">
+            <span>Built for tactical allocation, risk-aware flows, and market structure signal discovery.</span>
+            <span>© 2026 QuantOps Studio</span>
+        </footer>
+    </div>
+</body>
+</html>

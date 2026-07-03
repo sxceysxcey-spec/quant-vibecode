@@ -1,0 +1,210 @@
+:root {
+    --bg: #0f172a;
+    --panel: rgba(15, 23, 42, 0.88);
+    --panel-soft: rgba(30, 41, 59, 0.96);
+    --accent: #f59e0b;
+    --accent-muted: #fef3c7;
+    --text: #e2e8f0;
+    --text-muted: #94a3b8;
+    --border: rgba(148, 163, 184, 0.24);
+}
+
+* {
+    box-sizing: border-box;
+    font-family: Inter, ui-sans-serif, system-ui, -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif;
+}
+
+body {
+    margin: 0;
+    min-height: 100vh;
+    background: radial-gradient(circle at top left, rgba(59, 130, 246, 0.16), transparent 25%),
+                linear-gradient(180deg, rgba(15, 23, 42, 1), rgba(15, 23, 42, 0.95));
+    color: var(--text);
+}
+
+.hero-panel {
+    padding: 4rem 3rem 2rem;
+    display: flex;
+    justify-content: space-between;
+    gap: 2rem;
+}
+
+.brand {
+    max-width: 38rem;
+}
+
+.brand-logo {
+    font-size: 2.75rem;
+    letter-spacing: 0.35em;
+    text-transform: uppercase;
+    color: var(--accent);
+    font-weight: 800;
+}
+
+.brand-subtitle {
+    margin-top: 0.75rem;
+    color: var(--text-muted);
+    text-transform: uppercase;
+    letter-spacing: 0.18em;
+    font-size: 0.95rem;
+}
+
+.hero-copy h1 {
+    margin: 0;
+    font-size: clamp(3rem, 5vw, 4.25rem);
+    line-height: 1.02;
+}
+
+.hero-copy p {
+    max-width: 40rem;
+    margin-top: 1.25rem;
+    color: var(--text-muted);
+    font-size: 1rem;
+}
+
+.summary-grid {
+    display: grid;
+    grid-template-columns: repeat(3, minmax(0, 1fr));
+    gap: 1.5rem;
+    padding: 0 3rem 3rem;
+}
+
+.card {
+    background: var(--panel);
+    border: 1px solid var(--border);
+    border-radius: 1.25rem;
+    padding: 1.75rem;
+    box-shadow: 0 25px 60px rgba(15, 23, 42, 0.18);
+}
+
+.highlight {
+    grid-column: span 2;
+}
+
+.card h2 {
+    margin-top: 0;
+    color: #ffffff;
+}
+
+.card p,
+.card ul,
+.ticket-panel div {
+    color: var(--text-muted);
+    line-height: 1.75;
+}
+
+.chart-panel,
+.ticket-panel {
+    margin-top: 1.5rem;
+    min-height: 260px;
+    display: grid;
+    place-items: center;
+    background: linear-gradient(180deg, rgba(15, 23, 42, 0.95), rgba(30, 41, 59, 0.95));
+    border-radius: 1rem;
+    border: 1px solid rgba(148, 163, 184, 0.1);
+}
+
+.placeholder-text {
+    padding: 1rem 1.5rem;
+    color: var(--accent-muted);
+    font-size: 0.95rem;
+    text-align: center;
+}
+
+.ticket-panel {
+    display: grid;
+    gap: 0.85rem;
+}
+
+.ticket-panel div {
+    padding: 1rem 1.25rem;
+    background: rgba(14, 25, 48, 0.95);
+    border-radius: 0.95rem;
+    border: 1px solid rgba(249, 115, 22, 0.13);
+}
+
+.feature-bar {
+    display: grid;
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+    gap: 1.5rem;
+    padding: 0 3rem 3rem;
+}
+
+.feature-panel {
+    background: rgba(255, 255, 255, 0.04);
+    border: 1px solid rgba(148, 163, 184, 0.14);
+    border-radius: 1.25rem;
+    padding: 1.75rem;
+}
+
+.feature-panel h3 {
+    margin-top: 0;
+}
+
+footer {
+    padding: 2rem 3rem 3rem;
+    color: var(--text-muted);
+    font-size: 0.95rem;
+}
+
+.heatmap-grid {
+    display: grid;
+    grid-template-columns: repeat(auto-fit, minmax(140px, 1fr));
+    gap: 1rem;
+}
+
+.heatmap-card {
+    background: rgba(15, 23, 42, 0.95);
+    border: 1px solid rgba(148, 163, 184, 0.12);
+    border-radius: 1rem;
+    padding: 1rem;
+    min-height: 120px;
+}
+
+.heatmap-card-title {
+    color: var(--text-muted);
+    font-size: 0.95rem;
+    margin-bottom: 0.75rem;
+    letter-spacing: 0.04em;
+    text-transform: uppercase;
+}
+
+.heatmap-card-value {
+    font-size: 2rem;
+    font-weight: 700;
+    margin-bottom: 0.75rem;
+}
+
+.heatmap-card-bar {
+    height: 10px;
+    border-radius: 999px;
+    background: var(--accent);
+}
+
+.ticket-item,
+.scorecard-row {
+    display: flex;
+    justify-content: space-between;
+    gap: 1rem;
+    padding: 1rem 1.25rem;
+    margin-bottom: 0.75rem;
+    border-radius: 0.85rem;
+    background: rgba(255, 255, 255, 0.04);
+    border: 1px solid rgba(148, 163, 184, 0.12);
+}
+
+.ticket-item {
+    font-weight: 600;
+    color: var(--text);
+}
+
+.scorecard-row strong {
+    color: var(--text-muted);
+}
+
+@media (max-width: 1180px) {
+    .summary-grid,
+    .feature-bar {
+        grid-template-columns: 1fr;
+    }
+}

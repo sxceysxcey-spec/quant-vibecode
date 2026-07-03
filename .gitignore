@@ -1,0 +1,14 @@
+﻿.venv/
+__pycache__/
+*.pyc
+backtest_performance_results.csv
+portfolio_risk_metrics.csv
+processed_regime_matrix.csv
+raw_macro_panel.csv
+execution_order_slip.csv
+data_watcher.log
+desktop.ini
+cpp/wasm/emsdk/
+cpp/wasm/build/
+web/sector_heatmap.js
+web/sector_heatmap.wasm
