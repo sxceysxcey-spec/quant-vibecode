@@ -121,6 +121,35 @@ try:
 except Exception:
     st.info("Unable to render sector heatmap at this time.")
     
+# --- FACTOR OVERLAY PANEL ---
+st.markdown("---")
+st.write("### 📈 Factor Overlay & Multi-Asset Signals")
+try:
+    momentum_cols = [c for c in df.columns if c.startswith("Momentum_")]
+    valuation_cols = [c for c in df.columns if c.startswith(("PE_","PB_","ROE_","DE_"))]
+    alt_cols = [c for c in ["Baltic_Dry", "Cass_Freight", "Consumer_Sentiment", "Dollar_Index"] if c in df.columns]
+
+    if momentum_cols:
+        latest_mom = df[momentum_cols].iloc[-1].sort_values(ascending=False)
+        st.write("#### Latest 12-Month Momentum")
+        st.table(latest_mom.to_frame("Momentum").style.format({"Momentum": "{:.2%}"}))
+
+    if valuation_cols:
+        latest_vals = df[valuation_cols].iloc[-1].round(2)
+        st.write("#### Current Factor Snapshots")
+        st.table(latest_vals.to_frame("Latest"))
+
+    if alt_cols:
+        st.write("#### Alternative Macro Signals")
+        alt_latest = df[alt_cols].iloc[-1]
+        alt_df = alt_latest.to_frame("Latest").round(2)
+        st.table(alt_df)
+
+    if not momentum_cols and not valuation_cols and not alt_cols:
+        st.info("Factor and alternative data not yet available. Run the pipeline to populate these signals.")
+except Exception:
+    st.info("Unable to render the factor overlay panel at the moment.")
+
 # --- HISTORICAL ANIMATION (SECTOR ROTATION OVER TIME) ---
 try:
     anim_sectors = ["XLK","XLY","XLP","XLE","XLF","XLI","XLV","XLB","XLU","XLC","XLRE"]

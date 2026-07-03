@@ -126,7 +126,8 @@ Raw data collection
 
 ## Current status
 
-- Streamlit dashboard is functional with regime metrics, time-series charts, sector rotation visualization, and valuation tools.
+- Streamlit dashboard is functional with regime metrics, time-series charts, sector rotation visualization, valuation tools, and a new factor overlay panel.
+- The pipeline now includes broader multi-asset coverage for bonds, commodities, FX, and alternative macro signals.
 - WASM module is compiled and copied into `web/`, with the browser loader now wired for runtime module detection.
 - Backtest engine now produces comparative validation metrics versus SPY and QQQ.
 - Documentation and deployment guidance have been added.
