@@ -191,3 +191,19 @@ The static web frontend can be hosted separately on any static site service, whi
 - `web/index.js` now loads the compiled WASM module if available and falls back cleanly if it is not.
 - `engine_backtest.py` now saves both the full performance series and a summary metrics file.
 - `README.md` documents the system flow, validation story, and deployment path more clearly.
+
+## Recent improvements
+
+- **Portable file paths:** every script (`pipeline_data.py`, `engine_regime.py`, `engine_backtest.py`, `portfolio_manager.py`, `macro_rebalancer.py`, `app_frontend.py`, `diagnose.py`) previously read/wrote CSVs via a hardcoded absolute path from the original author's machine (`c:\Users\ceyxc\New folder\...`), which meant the pipeline could not run on any other machine. All paths are now resolved relative to each script's own location via `Path(__file__).parent`.
+- **Portable interpreter path:** `app_frontend.py` launched pipeline subprocesses using a hardcoded `.venv\Scripts\python.exe` path. It now uses `sys.executable`, so it always runs with whatever interpreter is currently running Streamlit.
+- **`macro_rebalancer.py` fixes and cleanup:**
+  - Fixed a division-by-zero crash in the fallback (QQQ/IBB) allocation path when a price is 0.
+  - Deduplicated the transaction-cost/slippage model into a shared helper (`_price_transaction`) used by both the sector-driven and fallback order paths, so both now produce consistent output columns.
+  - Transaction cost assumptions (fixed fee, commission per share, commission bps, base slippage, slippage scale) are now function parameters and CLI flags instead of hardcoded literals.
+  - Guarded against `temperature <= 0` in the softmax allocation method, which previously divided by zero silently.
+- **Removed hardcoded FRED API key:** `pipeline_data.py` and `diagnose.py` previously embedded the FRED API key directly in source. The key is now loaded from a local `.env` file (via `python-dotenv`) and read through `FRED_API_KEY`, with a clear error raised if it's missing. A `.env.example` template documents the required variable, and `.env` is gitignored.
+- **Fixed missing dependency:** `requirements.txt` was missing `requests`, which `pipeline_data.py` already depended on directly; added it along with `python-dotenv`.
+- **Fixed a silent data-loss bug in `pipeline_data.py`:**
+  - Windows consoles often default to a legacy `cp1252` codepage that can't encode the box-drawing characters (`└─`) used in status messages. The resulting crash was being swallowed by a generic `except` and misreported as a failed download, even though the data had already been fetched successfully. Stdout is now forced to UTF-8 at import time.
+  - ETFs don't report stock fundamentals like ROE or debt-to-equity via `yfinance`, so those factor columns came back entirely empty. The pipeline's final `.dropna()` had no `subset`, so those all-NaN columns caused *every row* of the merged panel to be dropped, silently producing an empty dataset. The fix drops the always-empty factor columns and restricts the final `dropna()` to the core macro/price columns only.
+- **Added plain-English explainer boxes to the dashboard:** every section of `app_frontend.py` (metrics, timeline chart, sector heatmap, factor overlay, historical sector-rotation animation, DCF toolkit, drawdown chart, execution slip, rebalancer parameters, backtest chart) now has a "❓ ELI5" popover button beside its header that explains what the section shows and why it matters, in simple language and analogies, without changing the underlying analysis.

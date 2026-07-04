@@ -6,6 +6,9 @@ backtest results and regime state signals.
 
 import pandas as pd
 import numpy as np
+from pathlib import Path
+
+ROOT = Path(__file__).parent
 
 # =====================================================================
 # FILE 5: DYNAMIC RISK MANAGEMENT ENGINE
@@ -19,7 +22,7 @@ def calculate_risk_metrics():
     """
     print("[*] Running portfolio optimization layer...")
     try:
-        df = pd.read_csv("c:/Users/ceyxc/New folder/backtest_performance_results.csv", index_col=0, parse_dates=True)
+        df = pd.read_csv(ROOT / "backtest_performance_results.csv", index_col=0, parse_dates=True)
     except Exception as e:
         print(f"[ERROR] Portfolio manager cannot find backtest sheets: {e}")
         return
@@ -39,7 +42,7 @@ def calculate_risk_metrics():
     df["IBB_Weight"] = np.where(df["Regime_State_Score"] < 0, (abs(df["Regime_State_Score"]) / 2).clip(0, 1), 0)
     df["Cash_Weight"] = 1.0 - (df["QQQ_Weight"] + df["IBB_Weight"])
 
-    df.to_csv("c:/Users/ceyxc/New folder/portfolio_risk_metrics.csv")
+    df.to_csv(ROOT / "portfolio_risk_metrics.csv")
     print("[SUCCESS] Risk evaluation metrics written to 'portfolio_risk_metrics.csv'")
 
 if __name__ == "__main__":

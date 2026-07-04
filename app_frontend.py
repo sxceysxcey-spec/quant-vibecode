@@ -7,11 +7,14 @@ valuation tools, and visualizations for the macro quant system.
 import subprocess
 import os
 import sys
+from pathlib import Path
 import streamlit as st
 import pandas as pd
 import plotly.graph_objects as go
 from plotly.subplots import make_subplots
 import yfinance as yf
+
+ROOT = Path(__file__).parent
 
 # --- APP LAYOUT CONFIGURATION ---
 st.set_page_config(page_title="Macro War Room Dashboard", layout="wide")
@@ -20,10 +23,30 @@ st.title("⚡ MACRO QUANT WAR ROOM")
 st.subheader("Institutional State Detector, Risk Optimization, & Automated Rebalancer")
 st.markdown("---")
 
+
+def section_header(title, explanation, level="###"):
+    """Render a section header with a click-to-open plain-English explainer beside it."""
+    head_col, info_col = st.columns([8, 1])
+    with head_col:
+        st.write(f"{level} {title}")
+    with info_col:
+        with st.popover("❓ ELI5"):
+            st.markdown(explanation)
+
+
+def sidebar_section_header(title, explanation):
+    """Same as section_header, but for the sidebar."""
+    head_col, info_col = st.sidebar.columns([4, 1])
+    with head_col:
+        st.write(f"### {title}")
+    with info_col:
+        with st.popover("❓"):
+            st.markdown(explanation)
+
 # --- CENTRALIZED AUTOMATION PROCESS ENGINE ---
 def execute_system_subprocess(script_path, operational_step_name):
     """Execute an external pipeline script and report the result in the sidebar."""
-    python_exe = r"c:\Users\ceyxc\New folder\.venv\Scripts\python.exe"
+    python_exe = sys.executable
     def _run(cmd_args):
         try:
             result = subprocess.run(cmd_args, capture_output=True, text=True, check=True)
@@ -37,24 +60,32 @@ def execute_system_subprocess(script_path, operational_step_name):
     return _run(cmd)
 
 # --- SIDEBAR CONTROL PANEL ---
-st.sidebar.header("🕹️ Live Infrastructure Controls")
+sidebar_section_header(
+    "🕹️ Live Infrastructure Controls",
+    "These buttons are like pressing **go** on machines in a factory line, one after another:\n\n"
+    "- **Data Ingestion** grabs fresh numbers from the internet (interest rates, stock prices).\n"
+    "- **State Detection Engine** does the math to figure out if the economy looks *sunny* or *stormy* "
+    "right now, checks how well our strategy would have done in the past, works out how much cash to "
+    "keep safe, and prints a shopping list of trades.\n\n"
+    "You click them in order, and each one hands its answer to the next, like an assembly line."
+)
 
 if st.sidebar.button("🔄 Execute Data Ingestion Pipeline"):
     with st.spinner("Executing Data Downloader..."):
-        execute_system_subprocess(r"c:\Users\ceyxc\New folder\pipeline_data.py", "Data Ingestion Pipeline")
+        execute_system_subprocess(ROOT / "pipeline_data.py", "Data Ingestion Pipeline")
 
 if st.sidebar.button("🧠 Compute State Detection Engine"):
     with st.spinner("Processing Matrix Weights..."):
-        execute_system_subprocess(r"c:\Users\ceyxc\New folder\engine_regime.py", "Regime Scoring Engine")
-        execute_system_subprocess(r"c:\Users\ceyxc\New folder\engine_backtest.py", "Portfolio Performance Backtest")
-        execute_system_subprocess(r"c:\Users\ceyxc\New folder\portfolio_manager.py", "Risk Matrix Optimizer")
-        execute_system_subprocess(r"c:\Users\ceyxc\New folder\macro_rebalancer.py", "Automated Order Rebalancer")
+        execute_system_subprocess(ROOT / "engine_regime.py", "Regime Scoring Engine")
+        execute_system_subprocess(ROOT / "engine_backtest.py", "Portfolio Performance Backtest")
+        execute_system_subprocess(ROOT / "portfolio_manager.py", "Risk Matrix Optimizer")
+        execute_system_subprocess(ROOT / "macro_rebalancer.py", "Automated Order Rebalancer")
     st.sidebar.success("All Systems Synchronized!")
 
 # --- DATA STORAGE BRIDGE ---
 try:
-    df = pd.read_csv(r"c:\Users\ceyxc\New folder\processed_regime_matrix.csv", index_col=0, parse_dates=True).sort_index()
-    risk_df = pd.read_csv(r"c:\Users\ceyxc\New folder\portfolio_risk_metrics.csv", index_col=0, parse_dates=True).sort_index()
+    df = pd.read_csv(ROOT / "processed_regime_matrix.csv", index_col=0, parse_dates=True).sort_index()
+    risk_df = pd.read_csv(ROOT / "portfolio_risk_metrics.csv", index_col=0, parse_dates=True).sort_index()
     latest_row = risk_df.iloc[-1]
     current_score = df["Regime_State_Score"].iloc[-1]
 except Exception:
@@ -66,7 +97,7 @@ except Exception:
     sys.exit(0)
 
 # --- METRIC PRESENTATION SUITE ---
-m1, m2, m3 = st.columns(3)
+m1, m2, m3, m4 = st.columns([3, 3, 3, 1])
 with m1:
     st.metric(label="Current Macro State Vector", value=f"{current_score:+.2f}")
 with m2:
@@ -74,11 +105,27 @@ with m2:
     st.metric(label="Detected Structural Regime", value=status)
 with m3:
     st.metric(label="System Cash Cushion Target", value=f"{latest_row['Cash_Weight']*100:.1f}%")
+with m4:
+    with st.popover("❓ ELI5"):
+        st.markdown(
+            "**Macro State Vector**: one number that sums up the economy's *mood* - positive means "
+            "things look healthy and growing, negative means things look tight and risky.\n\n"
+            "**Structural Regime**: the plain-English label for that number, like calling 70°F "
+            "'warm' instead of just saying '70'.\n\n"
+            "**Cash Cushion**: how much money we'd keep as safe cash instead of investing, like keeping "
+            "some of your allowance in a piggy bank instead of spending all of it, just in case."
+        )
 
 st.markdown("---")
 
 # --- TIMELINE SYNC CHART ---
-st.write("### 📊 Cross-Asset Timeline Sync")
+section_header(
+    "📊 Cross-Asset Timeline Sync",
+    "Think of the black line as a weather forecast for the economy - up means *sunny* (good for "
+    "investing), down means *stormy* (riskier). The colored lines below show how three different "
+    "investments grew over that same time (SPY = the whole stock market, QQQ = tech-heavy stocks, "
+    "IBB = biotech stocks), all starting from the same point so we can compare who grew fastest."
+)
 fig = make_subplots(rows=2, cols=1, shared_xaxes=True, vertical_spacing=0.08)
 fig.add_trace(go.Scatter(x=df.index, y=df["Regime_State_Score"], name="Regime Score Vector", line=dict(color="black", width=2.5)), row=1, col=1)
 
@@ -92,7 +139,13 @@ st.plotly_chart(fig, width="stretch")
 
 # --- SECTOR ROTATION HEATMAP ---
 st.markdown("---")
-st.write("### 🔥 Dynamic Sector Rotation Heatmap")
+section_header(
+    "🔥 Dynamic Sector Rotation Heatmap",
+    "Imagine 11 classrooms, each one a different part of the economy (Tech class, Energy class, "
+    "Health class, and so on). Each box is colored like a thermometer: blue means that classroom is "
+    "doing better than its own normal, red means it's doing worse than its own normal. This helps spot "
+    "which parts of the economy are 'hot' or 'cold' right now."
+)
 try:
     # Define sectors order for the heatmap
     sectors = ["XLK","XLY","XLP","XLE","XLF","XLI","XLV","XLB","XLU","XLC","XLRE"]
@@ -123,7 +176,16 @@ except Exception:
     
 # --- FACTOR OVERLAY PANEL ---
 st.markdown("---")
-st.write("### 📈 Factor Overlay & Multi-Asset Signals")
+section_header(
+    "📈 Factor Overlay & Multi-Asset Signals",
+    "**Momentum** answers: 'Has this investment been going up lately?' - like checking if a ball "
+    "rolling downhill is speeding up or slowing down.\n\n"
+    "**Valuation ratios** (P/E, P/B, etc.) answer: 'Is this expensive or cheap compared to what the "
+    "company actually earns or owns?' - like comparing the price tags on two same-size backpacks to "
+    "see which is the better deal.\n\n"
+    "**Alternative signals** are extra clues from outside the stock market, like counting how much "
+    "freight is being shipped, to guess how the economy is really doing."
+)
 try:
     momentum_cols = [c for c in df.columns if c.startswith("Momentum_")]
     valuation_cols = [c for c in df.columns if c.startswith(("PE_","PB_","ROE_","DE_"))]
@@ -151,6 +213,13 @@ except Exception:
     st.info("Unable to render the factor overlay panel at the moment.")
 
 # --- HISTORICAL ANIMATION (SECTOR ROTATION OVER TIME) ---
+st.markdown("---")
+section_header(
+    "🎞️ Historical Sector Rotation Movie",
+    "This is the sector heatmap from above, but played like a time-lapse video, so you can watch "
+    "which parts of the economy were 'hot' or 'cold' month by month, instead of only seeing right now. "
+    "Press **Play** to watch it move through history."
+)
 try:
     anim_sectors = ["XLK","XLY","XLP","XLE","XLF","XLI","XLV","XLB","XLU","XLC","XLRE"]
     anim_zcols = [f"{s}_Z" for s in anim_sectors]
@@ -195,7 +264,14 @@ except Exception:
 
 # --- FUNDAMENTALS TAB: VALUATION TOOLKIT ---
 st.markdown("---")
-st.write("### 🧾 Fundamentals: Company Valuation Toolkit (DCF & Ratios)")
+section_header(
+    "🧾 Fundamentals: Company Valuation Toolkit (DCF & Ratios)",
+    "This tool guesses what a company is really worth. It asks: 'How much cash will this company make "
+    "every year for the next few years, and how much is that future cash worth in today's dollars?' "
+    "Money today is worth more than the same amount later - a dollar now can start earning more dollars "
+    "- so we *discount* future cash to make it comparable, similar to knowing $10 today beats a promise "
+    "of $10 next year."
+)
 
 col1, col2 = st.columns([2,1])
 with col1:
@@ -293,7 +369,14 @@ with col2:
     st.write("Use this toolkit to run a quick DCF and view basic valuation multiples. For deeper fundamental analysis, consider adding a fundamentals dataset (10-K/10-Q parsing, analyst estimates, or premium data feeds).")
 
 # --- DRAWDOWN MATRIX STRESS GAUGE ---
-st.write("### 🛡️ Drawdown Profile Stress-Testing")
+st.markdown("---")
+section_header(
+    "🛡️ Drawdown Profile Stress-Testing",
+    "A drawdown measures how far something has fallen from its highest point - like measuring how far "
+    "you slid back down after climbing partway up a hill. This chart compares the biggest 'slides' of "
+    "our strategy versus just holding the S&P 500, showing how bumpy the ride can get even when the "
+    "long-term direction is up."
+)
 fig_dd = go.Figure()
 fig_dd.add_trace(go.Scatter(x=risk_df.index, y=risk_df["Strategy_DD"], name="Regime Allocation Strategy", fill='tozeroy', line=dict(color="red")))
 fig_dd.add_trace(go.Scatter(x=risk_df.index, y=risk_df["SPY_DD"], name="S&P 500 Benchmark", line=dict(color="grey", dash="dash")))
@@ -302,8 +385,14 @@ st.plotly_chart(fig_dd, width="stretch")
 
 # --- AUTOMATED ORDER SLIP REBALANCER MATRIX VIEW ---
 st.markdown("---")
-st.write("### 📜 Automated Execution Order Slip Ticket")
-slip_file = r"c:\Users\ceyxc\New folder\execution_order_slip.csv"
+section_header(
+    "📜 Automated Execution Order Slip Ticket",
+    "Once the model decides which sectors look best, this turns that decision into an actual shopping "
+    "list: exactly how many shares of each thing to buy, plus the price, fees, and 'slippage' (extra "
+    "cost from the price moving slightly while your order is being filled) - like a receipt printed "
+    "before you even walk into the store."
+)
+slip_file = ROOT / "execution_order_slip.csv"
 
 if os.path.exists(slip_file):
     slip_df = pd.read_csv(slip_file)
@@ -323,7 +412,14 @@ else:
 
 # --- REBALANCER PARAMS (Sidebar) ---
 st.sidebar.markdown("---")
-st.sidebar.header("🧾 Rebalancer Parameters")
+sidebar_section_header(
+    "🧾 Rebalancer Parameters",
+    "These sliders change the *rules* the shopping list follows:\n\n"
+    "- **Allocation Method** decides how we split money between winning sectors.\n"
+    "- **Min Z threshold** ignores sectors that aren't doing well enough to bother with.\n"
+    "- **Max weight per sector** stops us from putting too many eggs in one basket.\n"
+    "- **Portfolio Value** is simply how much total money we're pretending to invest."
+)
 method = st.sidebar.selectbox("Allocation Method", options=["positive","softmax"], index=0)
 min_z = st.sidebar.slider("Min Z threshold", -1.0, 3.0, 0.0, 0.1)
 max_w = st.sidebar.slider("Max weight per sector (%)", 1, 50, 20)
@@ -332,8 +428,8 @@ portfolio_val = st.sidebar.number_input("Portfolio Value (USD)", min_value=1000.
 
 if st.sidebar.button("🧾 Generate Execution Slip (Heatmap-driven) "):
     # Build command line args
-    python_exe = r"c:\Users\ceyxc\New folder\.venv\Scripts\python.exe"
-    script = r"c:\Users\ceyxc\New folder\macro_rebalancer.py"
+    python_exe = sys.executable
+    script = ROOT / "macro_rebalancer.py"
     cmd = [python_exe, script, f"--portfolio={portfolio_val}", f"--min-z={min_z}", f"--max-weight={max_w/100.0}", f"--method={method}", f"--temperature={temperature}"]
     try:
         res = subprocess.run(cmd, capture_output=True, text=True, check=True)
@@ -348,16 +444,21 @@ if st.sidebar.button("🧾 Generate Execution Slip (Heatmap-driven) "):
 
 # --- STEP 2 INTEGRATION: THE PERFORMANCE TAB ---
 try:
-    backtest_df = pd.read_csv("c:/Users/ceyxc/New folder/backtest_performance_results.csv", index_col=0, parse_dates=True)
+    backtest_df = pd.read_csv(ROOT / "backtest_performance_results.csv", index_col=0, parse_dates=True)
     
     st.markdown("---")
-    st.write("### 📈 Capital Growth Backtest Audit")
-    
+    section_header(
+        "📈 Capital Growth Backtest Audit",
+        "This shows what a single dollar would have grown into over time if you'd followed our "
+        "strategy, compared to if you'd just bought the S&P 500 and never touched it again. It's "
+        "basically a race between two piggy banks that both started with $1."
+    )
+
     fig_perf = go.Figure()
     fig_perf.add_trace(go.Scatter(x=backtest_df.index, y=backtest_df["Strategy_Cum"], name="Dynamic Regime Strategy", line=dict(color="green", width=3)))
     fig_perf.add_trace(go.Scatter(x=backtest_df.index, y=backtest_df["SPY_Cum"], name="S&P 500 Benchmark", line=dict(color="grey", dash="dash")))
     
     fig_perf.update_layout(template="plotly_white", height=450, title="Growth of $1 Over Time (Regime Switching Strategy vs. Buy & Hold)")
-    st.plotly_chart(fig_perf, use_container_width=True)
+    st.plotly_chart(fig_perf, width="stretch")
 except Exception:
     pass

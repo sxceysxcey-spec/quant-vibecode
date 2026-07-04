@@ -7,13 +7,55 @@ with transaction cost and slippage assumptions.
 import pandas as pd
 import numpy as np
 import os
+from pathlib import Path
 
 # =====================================================================
 # FILE 6: MACRO REBALANCER & AUTOMATED ORDER GENERATOR
 # Role: Computes share execution values and generates trade tickets.
 # =====================================================================
 
-def generate_execution_order_slips(portfolio_value=100000.0, min_z_threshold=0.0, max_weight=0.2, method='positive', temperature=1.0):
+ROOT = Path(__file__).parent
+
+# Default transaction cost / slippage model. Exposed as function parameters
+# below so callers can tune the model without editing source.
+DEFAULT_FIXED_FEE = 1.0             # USD per order
+DEFAULT_COMMISSION_PER_SHARE = 0.0  # USD per share
+DEFAULT_COMMISSION_BPS = 0.0005     # proportion of notional (0.05%)
+DEFAULT_BASE_SLIPPAGE_PCT = 0.001   # 0.1% base slippage
+DEFAULT_SLIPPAGE_SCALE = 0.5        # scales with order size relative to portfolio
+
+
+def _price_transaction(shares, price, portfolio_value, fixed_fee, commission_per_share,
+                        commission_bps, base_slippage_pct, slippage_scale):
+    """Estimate slippage/commission/cash-needed for one order line."""
+    order_value = shares * price
+    rel_size = (order_value / float(max(portfolio_value, 1.0))) if portfolio_value > 0 else 0.0
+    slippage_pct = max(base_slippage_pct + slippage_scale * rel_size, 0.0)
+
+    slippage_usd = shares * price * slippage_pct
+    commission_usd = shares * commission_per_share + order_value * commission_bps
+    total_tx_cost = fixed_fee + slippage_usd + commission_usd
+
+    est_exec_price_adjusted = price * (1.0 + slippage_pct)
+    est_cash_needed = shares * est_exec_price_adjusted + total_tx_cost
+
+    return {
+        "Estimated_Execution_Price_Adjusted": f"${est_exec_price_adjusted:.4f}",
+        "Estimated_Slippage_USD": f"${slippage_usd:.2f}",
+        "Commission_USD": f"${commission_usd:.2f}",
+        "Fixed_Fee_USD": f"${fixed_fee:.2f}",
+        "Total_Transaction_Cost_USD": f"${total_tx_cost:.2f}",
+        "Estimated_Cash_Needed": f"${est_cash_needed:.2f}",
+    }
+
+
+def generate_execution_order_slips(portfolio_value=100000.0, min_z_threshold=0.0, max_weight=0.2,
+                                    method='positive', temperature=1.0,
+                                    fixed_fee=DEFAULT_FIXED_FEE,
+                                    commission_per_share=DEFAULT_COMMISSION_PER_SHARE,
+                                    commission_bps=DEFAULT_COMMISSION_BPS,
+                                    base_slippage_pct=DEFAULT_BASE_SLIPPAGE_PCT,
+                                    slippage_scale=DEFAULT_SLIPPAGE_SCALE):
     """Generate execution slips driven by sector Z-scores.
 
     Parameters:
@@ -21,18 +63,23 @@ def generate_execution_order_slips(portfolio_value=100000.0, min_z_threshold=0.0
     - min_z_threshold: ignore sectors with Z below this (applied before softmax)
     - max_weight: maximum weight per sector (fraction)
     - method: 'positive' (positive-clamp) or 'softmax'
-    - temperature: softmax temperature (higher -> flatter)
+    - temperature: softmax temperature (higher -> flatter); must be > 0
+    - fixed_fee, commission_per_share, commission_bps, base_slippage_pct, slippage_scale:
+      transaction cost model knobs (see DEFAULT_* constants above)
     """
     print("[*] Generating systematic trade allocation slips...")
-    
-    risk_file = r"c:\Users\ceyxc\New folder\portfolio_risk_metrics.csv"
-    output_slip = r"c:\Users\ceyxc\New folder\execution_order_slip.csv"
-    
+
+    if method == 'softmax' and temperature <= 0:
+        raise ValueError("temperature must be > 0 for the softmax method")
+
+    risk_file = ROOT / "portfolio_risk_metrics.csv"
+    output_slip = ROOT / "execution_order_slip.csv"
+
     if not os.path.exists(risk_file):
         raise FileNotFoundError("Missing portfolio matrix source files. Cannot rebalance portfolio assets.")
 
     # Prefer the processed regime matrix (contains sector Z-scores)
-    regime_file = r"c:\Users\ceyxc\New folder\processed_regime_matrix.csv"
+    regime_file = ROOT / "processed_regime_matrix.csv"
     if not os.path.exists(regime_file):
         raise FileNotFoundError("Missing processed regime matrix. Run the regime engine first.")
 
@@ -54,14 +101,19 @@ def generate_execution_order_slips(portfolio_value=100000.0, min_z_threshold=0.0
             target_weight = latest_state.get(f"{asset}_Weight", 0.5)
             target_allocation_value = portfolio_value * target_weight
             current_unit_price = latest_state.get(asset, 1.0)
-            target_shares = int(np.floor(target_allocation_value / current_unit_price))
-            order_records.append({
+            target_shares = int(np.floor(target_allocation_value / current_unit_price)) if current_unit_price > 0 else 0
+            record = {
                 "Ticker": asset,
                 "Action": "BUY_MARKET" if target_shares > 0 else "HOLD",
                 "Target_Weight": f"{target_weight * 100:.2f}%",
                 "Order_Volume_Shares": target_shares,
                 "Estimated_Execution_Price": f"${current_unit_price:.2f}"
-            })
+            }
+            record.update(_price_transaction(
+                target_shares, current_unit_price, portfolio_value, fixed_fee,
+                commission_per_share, commission_bps, base_slippage_pct, slippage_scale
+            ))
+            order_records.append(record)
         order_slip_df = pd.DataFrame(order_records)
         order_slip_df.to_csv(output_slip, index=False)
         print(f"[SUCCESS] Fallback Execution Slip generated at: '{output_slip}'")
@@ -115,40 +167,18 @@ def generate_execution_order_slips(portfolio_value=100000.0, min_z_threshold=0.0
         target_alloc_value = portfolio_value * w
         shares = int(np.floor(target_alloc_value / price)) if price > 0 else 0
 
-        # Transaction cost & slippage model (simple, configurable)
-        # Default assumptions (can be tuned via function args later):
-        fixed_fee = 1.0                         # USD per order
-        commission_per_share = 0.0             # USD per share
-        commission_bps = 0.0005                # proportion of notional (0.05%)
-        base_slippage_pct = 0.001              # 0.1% base slippage
-        slippage_scale = 0.5                    # scales with order size relative to portfolio
-
-        order_value = shares * price
-        # slippage increases with relative order size (simple heuristic)
-        rel_size = (order_value / float(max(portfolio_value, 1.0))) if portfolio_value > 0 else 0.0
-        slippage_pct = base_slippage_pct + slippage_scale * rel_size
-        slippage_pct = float(max(slippage_pct, 0.0))
-
-        slippage_usd = shares * price * slippage_pct
-        commission_usd = shares * commission_per_share + order_value * commission_bps
-        total_tx_cost = fixed_fee + slippage_usd + commission_usd
-
-        est_exec_price_adjusted = price * (1.0 + slippage_pct)
-        est_cash_needed = shares * est_exec_price_adjusted + total_tx_cost
-
-        order_records.append({
+        record = {
             "Ticker": ticker,
             "Action": "BUY_MARKET" if shares > 0 else "HOLD",
             "Target_Weight": f"{w * 100:.2f}%",
             "Order_Volume_Shares": shares,
             "Estimated_Execution_Price": f"${price:.2f}",
-            "Estimated_Execution_Price_Adjusted": f"${est_exec_price_adjusted:.4f}",
-            "Estimated_Slippage_USD": f"${slippage_usd:.2f}",
-            "Commission_USD": f"${commission_usd:.2f}",
-            "Fixed_Fee_USD": f"${fixed_fee:.2f}",
-            "Total_Transaction_Cost_USD": f"${total_tx_cost:.2f}",
-            "Estimated_Cash_Needed": f"${est_cash_needed:.2f}"
-        })
+        }
+        record.update(_price_transaction(
+            shares, price, portfolio_value, fixed_fee,
+            commission_per_share, commission_bps, base_slippage_pct, slippage_scale
+        ))
+        order_records.append(record)
 
     order_slip_df = pd.DataFrame(order_records)
     order_slip_df.to_csv(output_slip, index=False)
@@ -163,5 +193,16 @@ if __name__ == "__main__":
     parser.add_argument('--max-weight', type=float, default=0.2)
     parser.add_argument('--method', type=str, default='positive', choices=['positive','softmax'])
     parser.add_argument('--temperature', type=float, default=1.0)
+    parser.add_argument('--fixed-fee', type=float, default=DEFAULT_FIXED_FEE)
+    parser.add_argument('--commission-per-share', type=float, default=DEFAULT_COMMISSION_PER_SHARE)
+    parser.add_argument('--commission-bps', type=float, default=DEFAULT_COMMISSION_BPS)
+    parser.add_argument('--base-slippage-pct', type=float, default=DEFAULT_BASE_SLIPPAGE_PCT)
+    parser.add_argument('--slippage-scale', type=float, default=DEFAULT_SLIPPAGE_SCALE)
     args = parser.parse_args()
-    generate_execution_order_slips(portfolio_value=args.portfolio, min_z_threshold=args.min_z, max_weight=args.max_weight, method=args.method, temperature=args.temperature)
+    generate_execution_order_slips(
+        portfolio_value=args.portfolio, min_z_threshold=args.min_z, max_weight=args.max_weight,
+        method=args.method, temperature=args.temperature,
+        fixed_fee=args.fixed_fee, commission_per_share=args.commission_per_share,
+        commission_bps=args.commission_bps, base_slippage_pct=args.base_slippage_pct,
+        slippage_scale=args.slippage_scale,
+    )

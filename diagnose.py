@@ -1,8 +1,18 @@
 import requests
 import pandas as pd
 import os
+from pathlib import Path
+from dotenv import load_dotenv
 
-FRED_KEY = "82188cf054f50b743ec2385a6bf81be8"
+ROOT = Path(__file__).parent
+load_dotenv(ROOT / ".env")
+
+FRED_KEY = os.environ.get("FRED_API_KEY")
+if not FRED_KEY:
+    raise RuntimeError(
+        "FRED_API_KEY is not set. Create a .env file next to this script "
+        "(see .env.example) or export FRED_API_KEY in your shell."
+    )
 
 print("FRED API DIAGNOSTIC TEST")
 print("="*50)
@@ -33,9 +43,9 @@ except Exception as e:
 # Test 2: Check file paths
 print("\nFILE PATH CHECK")
 paths = [
-    r"c:\Users\ceyxc\New folder\pipeline_data.py",
-    r"c:\Users\ceyxc\New folder\raw_macro_panel.csv",
-    r"c:\Users\ceyxc\New folder\engine_regime.py"
+    ROOT / "pipeline_data.py",
+    ROOT / "raw_macro_panel.csv",
+    ROOT / "engine_regime.py",
 ]
 for p in paths:
     exists = "YES" if os.path.exists(p) else "NO"

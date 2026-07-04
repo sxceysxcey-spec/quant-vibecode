@@ -6,6 +6,9 @@ based on liquidity, yield curve, and interest rate dynamics.
 
 import pandas as pd
 import numpy as np
+from pathlib import Path
+
+ROOT = Path(__file__).parent
 
 # Map the FRED Series IDs to the column names used in pipeline_data.py
 # pipeline_data.py uses keys: "M2", "Yield_Curve", "Fed_Rates"
@@ -101,8 +104,7 @@ def run_regime_calculations():
     """Execute the full regime detection pipeline and persist the state matrix."""
     print("[*] Engine initialized. Loading 'raw_macro_panel.csv'...")
     
-    # Use absolute path to ensure we find the file
-    file_path = r"c:\Users\ceyxc\New folder\raw_macro_panel.csv"
+    file_path = ROOT / "raw_macro_panel.csv"
     
     try:
         df = pd.read_csv(file_path, index_col=0, parse_dates=True)
@@ -137,7 +139,7 @@ def run_regime_calculations():
                 df[f"{asset}_Fwd_{h}M"] = df[asset].pct_change(h).shift(-h) * 100
 
     # Save the processed matrix
-    output_file = r"c:\Users\ceyxc\New folder\processed_regime_matrix.csv"
+    output_file = ROOT / "processed_regime_matrix.csv"
     df.to_csv(output_file)
     print(f"[SUCCESS] State Detection Complete. Matrix saved to: '{output_file}'")
     return df

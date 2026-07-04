@@ -6,6 +6,9 @@ comparative metrics versus SPY and QQQ baselines.
 
 import pandas as pd
 import numpy as np
+from pathlib import Path
+
+ROOT = Path(__file__).parent
 
 # =====================================================================
 # FILE 4: PORTFOLIO BACKTESTING ENGINE
@@ -54,7 +57,7 @@ def execute_portfolio_backtest():
     """
     print("[*] Loading processed regime data for performance audit...")
     try:
-        df = pd.read_csv("c:/Users/ceyxc/New folder/processed_regime_matrix.csv", index_col=0, parse_dates=True)
+        df = pd.read_csv(ROOT / "processed_regime_matrix.csv", index_col=0, parse_dates=True)
     except Exception as e:
         print(f"[ERROR] Could not read matrix file: {e}")
         return
@@ -135,8 +138,8 @@ def execute_portfolio_backtest():
     print(f"Alpha vs QQQ: {summary['alpha_vs_qqq_pct']:+.2f}%")
     print("=" * 72)
 
-    df.to_csv("c:/Users/ceyxc/New folder/backtest_performance_results.csv")
-    pd.DataFrame([summary]).to_csv("c:/Users/ceyxc/New folder/backtest_summary_metrics.csv", index=False)
+    df.to_csv(ROOT / "backtest_performance_results.csv")
+    pd.DataFrame([summary]).to_csv(ROOT / "backtest_summary_metrics.csv", index=False)
     print("[SUCCESS] Results written to 'backtest_performance_results.csv' and 'backtest_summary_metrics.csv'")
 
 

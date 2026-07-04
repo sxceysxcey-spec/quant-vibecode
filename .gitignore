@@ -1,7 +1,9 @@
 ﻿.venv/
 __pycache__/
 *.pyc
+.env
 backtest_performance_results.csv
+backtest_summary_metrics.csv
 portfolio_risk_metrics.csv
 processed_regime_matrix.csv
 raw_macro_panel.csv

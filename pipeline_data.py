@@ -5,10 +5,22 @@ inter-market ratio signals used by the regime detection engine.
 """
 
 import os
+import sys
 import numpy as np
 import pandas as pd
 import yfinance as yf
 import requests
+from pathlib import Path
+from dotenv import load_dotenv
+
+ROOT = Path(__file__).parent
+load_dotenv(ROOT / ".env")
+
+# Windows consoles often default to a legacy codepage (e.g. cp1252) that can't
+# encode the box-drawing characters used in the status messages below. Force
+# UTF-8 stdout so those prints don't raise UnicodeEncodeError mid-download.
+if hasattr(sys.stdout, "reconfigure"):
+    sys.stdout.reconfigure(encoding="utf-8", errors="replace")
 
 
 def safe_print(*args, **kwargs):
@@ -28,8 +40,12 @@ def safe_print(*args, **kwargs):
 # Role: Connects to internet using your verified API key, saves to CSV.
 # =====================================================================
 
-# Hardcoded authenticated credential string
-FRED_API_KEY = "82188cf054f50b743ec2385a6bf81be8"
+FRED_API_KEY = os.environ.get("FRED_API_KEY")
+if not FRED_API_KEY:
+    raise RuntimeError(
+        "FRED_API_KEY is not set. Create a .env file next to this script "
+        "(see .env.example) or export FRED_API_KEY in your shell."
+    )
 
 def download_macro_indicators():
     """Pulls raw monthly economic metrics directly from the St. Louis Fed API."""
@@ -118,7 +134,11 @@ def download_factor_indicators(asset_prices):
         factor_df[f"ROE_{ticker}"] = info.get("returnOnEquity", np.nan)
         factor_df[f"DE_{ticker}"] = info.get("debtToEquity", np.nan)
 
-    factor_df = factor_df.fillna(method="ffill").fillna(method="bfill")
+    factor_df = factor_df.ffill().bfill()
+    # ETFs/funds don't report stock fundamentals like ROE or debt-to-equity via
+    # yfinance, so those columns come back entirely empty. Drop them rather than
+    # let them poison the downstream dropna() on the merged panel.
+    factor_df = factor_df.dropna(axis=1, how="all")
     return factor_df
 
 
@@ -186,14 +206,18 @@ def execute_pipeline():
     except Exception as e:
         safe_print(f"[!] Failed to compute inter-market ratios: {e}")
 
-    # Merge both datasets using their dates
-    master_panel = pd.concat([macro, assets, alt, factors], axis=1).dropna()
-    
+    # Merge both datasets using their dates. Only require the core macro/price
+    # columns to be present per row - optional alt-data and factor columns are
+    # frequently sparse or unavailable and shouldn't cause every row to be
+    # dropped.
+    core_cols = list(macro.columns) + list(assets.columns)
+    master_panel = pd.concat([macro, assets, alt, factors], axis=1).dropna(subset=core_cols)
+
     # Sort chronologically ascending for standard model calculations
     master_panel = master_panel.sort_index(ascending=True)
     
     # Save it down as a CSV file in the same folder
-    output_filename = r"c:\Users\ceyxc\New folder\raw_macro_panel.csv"
+    output_filename = ROOT / "raw_macro_panel.csv"
     master_panel.to_csv(output_filename)
     print(f"[3/3] Success! Combined historical spreadsheet saved as: '{output_filename}'")
 
