@@ -14,6 +14,8 @@ import plotly.graph_objects as go
 from plotly.subplots import make_subplots
 import yfinance as yf
 
+import ai_analyst
+
 ROOT = Path(__file__).parent
 
 # --- APP LAYOUT CONFIGURATION ---
@@ -115,6 +117,51 @@ with m4:
             "**Cash Cushion**: how much money we'd keep as safe cash instead of investing, like keeping "
             "some of your allowance in a piggy bank instead of spending all of it, just in case."
         )
+
+st.markdown("---")
+
+# --- AI CONSENSUS ANALYSIS ---
+section_header(
+    "🤖 AI Consensus Analysis",
+    "This asks a large language model (an AI, similar in kind to ChatGPT, but here it's Google's Gemini "
+    "on its free tier) to read everything on this page - the regime score, sector "
+    "strengths, backtest results, and proposed trades - plus a few recent news headlines, and write a "
+    "short plain-English research note connecting them. Think of it as asking a sharp research assistant "
+    "to turn a big spreadsheet into a few paragraphs you can actually read. Generation only runs when you "
+    "click the button."
+)
+
+if st.button("✨ Generate AI Analysis"):
+    with st.spinner("Reading the data and recent news, then asking the AI for a consensus read..."):
+        try:
+            backtest_summary_row = None
+            backtest_summary_path = ROOT / "backtest_summary_metrics.csv"
+            if backtest_summary_path.exists():
+                backtest_summary_row = pd.read_csv(backtest_summary_path).iloc[0].to_dict()
+
+            slip_df_for_ai = None
+            slip_path_for_ai = ROOT / "execution_order_slip.csv"
+            if slip_path_for_ai.exists():
+                slip_df_for_ai = pd.read_csv(slip_path_for_ai)
+
+            news_items = ai_analyst.fetch_recent_news()
+            analysis_text = ai_analyst.generate_ai_consensus(
+                df, risk_df,
+                backtest_summary=backtest_summary_row,
+                slip_df=slip_df_for_ai,
+                news_items=news_items,
+            )
+            st.markdown(analysis_text)
+
+            if news_items:
+                with st.expander("📰 News headlines used in this analysis"):
+                    for n in news_items:
+                        if n.get("link"):
+                            st.markdown(f"- [{n['title']}]({n['link']}) — *{n['publisher']}* ({n['ticker']})")
+                        else:
+                            st.markdown(f"- {n['title']} — *{n['publisher']}* ({n['ticker']})")
+        except Exception as e:
+            st.error(f"AI analysis failed: {e}")
 
 st.markdown("---")
 
